@@ -1,4 +1,4 @@
-package com.wordpress.algarecu.ds;
+package com.wordpress.algarecu.ds.atomix;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -22,6 +22,9 @@ import io.atomix.cluster.discovery.BootstrapDiscoveryProvider;
 
 
 public class ReplicasBoot {
+	
+	static final String filename = "threadsfile.txt";
+
 	
 	private static void buildLock(Atomix atomix, String filename) {
 		// build the distributed lock for raft protocol and linearizable reads
@@ -106,8 +109,73 @@ public class ReplicasBoot {
 		completableFuture.join();
 
 		// build the lock
-		String filename = "threadsfile.txt";
 		buildLock(atomix, filename);
 	}
 }
-
+	
+//	/* Code to bootstrap cluster replicas with old version of atomix in the pom.xml */
+//	Storage storage = Storage.builder()
+//			.withDirectory(new File("log"))
+//			.withStorageLevel(StorageLevel.DISK)
+//			.build();
+//	AtomixReplica replica = AtomixReplica.builder(new Address("localhost", 8100))
+//			.withStorage(storage)
+//			.withTransport(new NettyTransport())
+//			.build();
+//    CompletableFuture<AtomixReplica> completableFuture = replica.bootstrap();
+//    completableFuture.join();
+//    Thread.sleep(6000);
+//
+//	List<Address> cluster = Arrays.asList(
+//			new Address("localhost", 8101),
+//			new Address("localhost", 8102)
+//			);
+//
+//	AtomixReplica replica1 = AtomixReplica
+//			.builder(cluster.get(0)).withStorage(storage)
+//			.withStorage(storage)
+//			.build();
+//	replica1
+//	  .join(new Address("localhost", 8100))
+//	  .join();
+//	WorkerThread WT1 = new WorkerThread(replica1, cluster);
+//    WT1.run();
+//
+//	AtomixReplica replica2 = AtomixReplica
+//			.builder(cluster.get(1)).withStorage(storage)
+//			.withStorage(storage)
+//			.build();
+//	replica2
+//	  .join(new Address("localhost", 8100),
+//			new Address("localhost", 8101))
+//	  .join();
+//	WorkerThread WT2 = new WorkerThread(replica2, cluster);
+//    WT2.run();
+//	
+//	/* Lock and Write */
+//	DistributedLock lock = replica.getLock("my-map")
+//			.join();
+//	lock.lock()
+//	.thenRun(() -> System.out.println("Acquired a lock"));
+//	
+//	replica.getMap("my-map")
+//	.thenCompose(m -> m.put("K", "Value1"))
+//	.thenRun(() -> System.out.println("Value put into Distributed Map"))
+//	.join();
+//	
+//	logger.debug("Built cluster with number of members: " + cluster.size());
+//}
+//private static class WorkerThread extends Thread {
+//    private AtomixReplica replica;
+//    private List<Address> cluster;
+//
+//    WorkerThread(AtomixReplica replica, List<Address> cluster) {
+//        this.replica = replica;
+//        this.cluster = cluster;
+//    }
+//
+//    public void run() {
+//        replica.join(cluster)
+//          .join();
+//    }
+//}
