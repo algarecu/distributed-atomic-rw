@@ -25,7 +25,7 @@ public class MutexOneFile {
 			this.threadName = name;
 		}
 
-		public void run() {
+		public synchronized void run() {
 			try {
 				System.out.println(threadName + " : acquiring the file lock...");
 				System.out.println(threadName + " : available permits now: " + mySemaphore.availablePermits());
@@ -47,7 +47,7 @@ public class MutexOneFile {
 					opsCount++;
 				    
 			        BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true));
-			        writer.write(logDate);
+			        writer.write(threadName.toString() +  ": " + logDate);
 			        writer.newLine();
 			        writer.close();
 				}finally {
@@ -77,22 +77,17 @@ public class MutexOneFile {
 		// Interleave threads to print to a file in an orderly manner (this could be random if sleeps removed)
 		LockingThread t1 = new LockingThread("A");
 		t1.start();
-		Thread.sleep(6000);
 
 		LockingThread t2 = new LockingThread("B");
-		Thread.sleep(5000);
 		t2.start();
 		
 		LockingThread t3 = new LockingThread("C");
-		Thread.sleep(4000);
 		t3.start();
 
 		LockingThread t4 = new LockingThread("D");
-		Thread.sleep(3000);
 		t4.start();
 
 		LockingThread t5 = new LockingThread("E");
-		Thread.sleep(2000);
 		t5.start();
 
 		LockingThread t6 = new LockingThread("F");
