@@ -120,31 +120,32 @@ public class FencingOffStaleLockHolders {
 		IAtomicReference<FencedCount> atomicRef = hz1.getCPSubsystem().getAtomicReference("my-ref@" + atomicRefGroup);
 		atomicRef.set(new FencedCount(FencedLock.INVALID_FENCE, 0));
 
+		// Get the lock
 		String lockName = "my-lock@" + lockGroup;
 		FencedLock hz1Lock = hz1.getCPSubsystem().getLock(lockName);
-
-		// Member One crashes. After some time, the lock 
-		// will be auto-released due to missing CP session heartbeats
-		hz1.getLifecycleService().terminate();
-
-		CPSessionManagementService sessionManagementService = hz2.getCPSubsystem().getCPSessionManagementService();
-		Collection sessions = sessionManagementService.getAllSessions(CPGroup.DEFAULT_GROUP_NAME).get();
-		// There is only one active session and it belongs to the first instance
-		assert sessions.size() == 1;
-		CPSession session = (CPSession) sessions.iterator().next();
-		
-		// We know that the lock holding instance is crashed.
-		// We are closing its session forcefully, hence releasing the lock...
-		sessionManagementService.forceCloseSession(CPGroup.DEFAULT_GROUP_NAME, session.id()).get();
-
 		FencedLock hz2Lock = hz2.getCPSubsystem().getLock(lockName);
 		FencedLock hz3Lock = hz3.getCPSubsystem().getLock(lockName);
 		FencedLock hz4Lock = hz4.getCPSubsystem().getLock(lockName);
 
-		while (hz2Lock.isLocked() || hz2Lock.isLocked()) {
-			Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-			System.out.println("Waiting for auto-release of the lock...");
-		}
+		/*-------------- Start CRASH a process --------------*/
+		hz1.getCPSubsystem().getLock("my-lock").lock();
+		hz1.getLifecycleService().terminate();
+		LOGGER.log(Level.INFO, "Waiting for auto-release of the lock of HZ1...");
+		assert hz1Lock.isLocked();
+
+		// There is only one active session and it belongs to the first instance
+		// After some time, the lock will be auto-released due to missing CP session heartbeats
+		CPSessionManagementService sessionManagementService = hz2.getCPSubsystem().getCPSessionManagementService();
+		Collection <CPSession> sessions = sessionManagementService.getAllSessions(CPGroup.DEFAULT_GROUP_NAME).get();
+		assert sessions.size() == 1;
+		CPSession session = sessions.iterator().next();
+
+		// We know that the lock holding instance is crashed.
+		// We are closing its session forcefully, hence releasing the lock...
+		sessionManagementService.forceCloseSession(CPGroup.DEFAULT_GROUP_NAME, session.id()).get();
+		assert !hz1Lock.isLocked();
+
+		/*-------------- End CRASH a process --------------*/
 
 		long fence1 = hz1Lock.lockAndGetFence();
 		// The first lock holder increments the count asynchronously.
@@ -176,13 +177,11 @@ public class FencingOffStaleLockHolders {
 		int finalValue = atomicRef.get().count;
 		assert finalValue == 1 || finalValue == 2;
 
-		// Sleep before
-		Thread.sleep(6000);
-
 		EXECUTOR.shutdown();
 		hz1.getLifecycleService().terminate();
 		hz2.getLifecycleService().terminate();
 		hz3.getLifecycleService().terminate();
+		hz4.getLifecycleService().terminate();
 	}
 
 	/**
